@@ -2,19 +2,14 @@
 Generic classes used for creating a symmetric encryption scheme.
 """
 
-from abc import ABC
+from __future__ import annotations
+
 import inspect
+from abc import ABC
 from secrets import randbits
 from typing import Any, Dict, List, Type, TypeVar, Union
 
-from .encryption_scheme import (
-    CT,
-    CV,
-    EncryptionScheme,
-    PT,
-    RP,
-)
-
+from .encryption_scheme import CT, CV, PT, RP, EncryptionScheme
 
 Bits = List[int]
 
@@ -25,7 +20,7 @@ class SymmetricKey:
     """
 
     @classmethod
-    def from_sec_param(cls, sec_param: int) -> "SymmetricKey":
+    def from_sec_param(cls, sec_param: int) -> SymmetricKey:
         """
         Class method that generates a uniformly random secret key
 
@@ -77,7 +72,7 @@ class SymmetricKey:
         return {"int_value": self.value}
 
     @classmethod
-    def deserialize(cls, json: Dict[str, int]) -> "SymmetricKey":
+    def deserialize(cls, json: Dict[str, int]) -> SymmetricKey:
         """
         Construct this key from its serialization.
 
@@ -130,7 +125,7 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
         EncryptionScheme.__init__(self)
 
     @staticmethod
-    def generate_key_material(
+    def generate_key_material(  # type: ignore[override]
         bit_length: int, *_args: Any, **_kwargs: Any
     ) -> SymmetricKey:
         """

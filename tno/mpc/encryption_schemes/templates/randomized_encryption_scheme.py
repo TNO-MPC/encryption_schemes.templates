@@ -2,20 +2,13 @@
 Generic classes for creating an EncryptionScheme that allows for precomputed, or stored randomness.
 """
 
+import warnings
 from abc import ABC, abstractmethod
-from threading import Event, Lock, Thread
-from typing import Any, Callable, cast, List, Optional, TypeVar
 from queue import Empty, Full, Queue
+from threading import Event, Lock, Thread
+from typing import Any, Callable, List, Optional, TypeVar, cast
 
-from .encryption_scheme import (
-    CT,
-    CV,
-    Ciphertext,
-    EncryptionScheme,
-    KM,
-    PT,
-    RP,
-)
+from .encryption_scheme import CT, CV, KM, PT, RP, Ciphertext, EncryptionScheme
 
 
 class Randomness:
@@ -33,6 +26,7 @@ class Randomness:
         generation_function: Callable[[], int],
         randomizations: Optional["Queue[int]"] = None,
         max_size: int = 100,
+        total: Optional[int] = None,
         nr_of_threads: int = 1,
         path: Optional[str] = None,
         separator: str = ",",
@@ -51,6 +45,7 @@ class Randomness:
         :param start_generation: flag to determine whether all threads should immediately start
             generating randomness (Default: True)
         :param max_size: maximum size of the buffer of randomizations. (Default: 100)
+        :param total: upper bound on the total amount of randomizations to generate. (Default: None)
         :param nr_of_threads: number of threads that generate randomizations in parallel.
         :param generation_function: Function that generates one random value.
         :param randomizations: Precomputed in-memory randomness to be stored in this object for
@@ -60,7 +55,8 @@ class Randomness:
         """
         if randomizations is None:
             randomizations = Queue(max_size)
-        self.generation_function = generation_function
+        self._generation_function = generation_function
+        self.total = total
         self.nr_of_threads = nr_of_threads
         self.randomizations = randomizations
         self.has_buffer = self.randomizations.qsize() > 0
@@ -70,6 +66,7 @@ class Randomness:
         self.debug = debug
 
         self.print_lock = Lock()
+        self.count_lock = Lock()
 
         self._generating = Event()
         self._shutdown = Event()
@@ -84,8 +81,27 @@ class Randomness:
         # variable that saves the position in the file we were reading
         self._file_position = 0
 
+        # variable that keeps track of the number of generated randomizations
+        self.generated_randomizations = 0
+
         # set up threads that generate randomizations and place them in the appropriate queue
         self.boot_generation(nr_of_threads, path, start_generation)
+
+    def _safe_increment_count(self) -> None:
+        """
+        Atomic increment of generated randomizations count.
+        """
+        if self.total is not None:
+            self.count_lock.acquire()
+            self.generated_randomizations += 1
+            if self.generated_randomizations == self.total:
+                self.stop_generating()
+            elif self.generated_randomizations > self.total + self.nr_of_threads:
+                warnings.warn(
+                    f"Requested {self.generated_randomizations} random elements, "
+                    f"however randomness generation is bounded by {self.total}."
+                )
+            self.count_lock.release()
 
     def safe_print(self, message: str) -> None:
         """
@@ -107,8 +123,8 @@ class Randomness:
         start_generation: bool = True,
     ) -> None:
         """
-        shut down the generation threads and file thread if they are still running.
-        Then, initialise new generation threads and a file thread.
+        Shut down the generation threads and file thread if they are still running.
+        Then, initialize new generation threads and a file thread.
 
         :param nr_of_threads: number of generation threads.
             (Default: None, the nr_of_threads parameter is taken from the original __init__)
@@ -291,6 +307,15 @@ class Randomness:
             except Full:
                 self.safe_print("[filethread] after EOF | buffer is full - retrying")
 
+    def generation_function(self) -> int:
+        """
+        Wrapper around generation function
+
+        :return: random element
+        """
+        self._safe_increment_count()
+        return self._generation_function()
+
     def generation_worker(self, identifier: int) -> None:
         """
         Function to be run by each generation worker. These workers keep generating random elements
@@ -353,7 +378,7 @@ class Randomness:
         """
         return self.randomizations.qsize()
 
-    def get_one(self) -> Any:
+    def get_one(self) -> int:
         """
         Checks the buffer for random value. If the buffer is empty, it waits for a random value
         from the generation thread.
@@ -435,6 +460,7 @@ class RandomizedEncryptionScheme(EncryptionScheme[KM, PT, RP, CV, CT], ABC):
         self,
         randomizations: Optional["Queue[int]"] = None,
         max_size: int = 100,
+        total: Optional[int] = None,
         nr_of_threads: int = 1,
         path: Optional[str] = None,
         separator: str = ",",
@@ -452,16 +478,18 @@ class RandomizedEncryptionScheme(EncryptionScheme[KM, PT, RP, CV, CT], ABC):
         :param randomizations: queue with randomizations. If no queue is given, it creates a
             fresh one (Default: None)
         :param max_size: maximum size of the queue (Default: 100)
+        :param total: upper bound on the total amount of randomizations to generate. (Default: None)
         :param nr_of_threads: number of generation worker threads that should be started
             (Default: 1)
         :param path: path (including filename) to the file that contains randomizations.
             By default no path is given and no randomness is extracted from any files. (Default: "")
         :param separator: separator for the random values in the given file (Default: ",")
         """
-        self.randomness = Randomness(
-            self.generate_randomness,
+        self.randomness: Randomness
+        self.initialize_randomness(
             randomizations=randomizations,
             max_size=max_size,
+            total=total,
             nr_of_threads=nr_of_threads,
             path=path,
             separator=separator,
@@ -470,7 +498,23 @@ class RandomizedEncryptionScheme(EncryptionScheme[KM, PT, RP, CV, CT], ABC):
         )
         EncryptionScheme.__init__(self)
 
-    def get_randomness(self) -> Any:
+    def initialize_randomness(
+        self,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Initializes a randomness class
+
+        :param kwargs: keyword arguments to pass on to Randomness constructor
+        """
+        if hasattr(self, "randomness"):
+            self.randomness.shut_down()
+        self.randomness = Randomness(
+            self.generate_randomness,
+            **kwargs,
+        )
+
+    def get_randomness(self) -> int:
         """
         Get new randomness from the randomness source.
 
@@ -479,7 +523,7 @@ class RandomizedEncryptionScheme(EncryptionScheme[KM, PT, RP, CV, CT], ABC):
         return self.randomness.get_one()
 
     @abstractmethod
-    def generate_randomness(self) -> Any:
+    def generate_randomness(self) -> int:
         """
         Method to generate randomness for this particular scheme.
 

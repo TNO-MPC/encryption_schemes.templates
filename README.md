@@ -4,17 +4,22 @@ The TNO MPC lab consists of generic software components, procedures, and functio
 
 The package tno.mpc.encryption_schemes.templates is part of the TNO Python Toolbox.
 
-*Remark: This cryptography software may not be used in applications that violate international export control legislations.*
+*Limitations in (end-)use: the content of this software package may solely be used for applications that comply with international export control laws.*
 
 ## Documentation
 
-Documentation of the tno.mpc.encryption_schemes.templates package can be found [here](https://docs.mpc.tno.nl/encryption_schemes/templates/1.0.3).
+Documentation of the tno.mpc.encryption_schemes.templates package can be found [here](https://docs.mpc.tno.nl/encryption_schemes/templates/2.0.2).
 
 ## Install
 
 Easily install the tno.mpc.encryption_schemes.templates package using pip:
 ```console
 $ python -m pip install tno.mpc.encryption_schemes.templates
+```
+
+If you wish to run the tests you can use:
+```console
+$ python -m pip install 'tno.mpc.encryption_schemes.templates[tests]'
 ```
 
 ## Usage

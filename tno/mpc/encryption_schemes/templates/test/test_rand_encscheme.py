@@ -1,32 +1,31 @@
+"""
+File containing all tests regarding the RandomizedEncryptionScheme functionalities.
+"""
+
+from __future__ import annotations
+
 import time
 from pathlib import Path
 from random import randint
-from typing import Tuple, Union
 from threading import Event, Thread
+from typing import Any, Tuple, Type, Union
+
+import pytest
 
 from tno.mpc.encryption_schemes.templates.asymmetric_encryption_scheme import (
     AsymmetricEncryptionScheme,
-    PK,
-    SK,
+    PublicKey,
+    SecretKey,
 )
-from tno.mpc.encryption_schemes.templates.encryption_scheme import (
-    Ciphertext,
-    EncodedPlaintext,
-    EncryptionScheme,
-    PT,
-    CV,
-    KM,
-    RP,
-    CT,
-)
+from tno.mpc.encryption_schemes.templates.encryption_scheme import EncodedPlaintext
 from tno.mpc.encryption_schemes.templates.randomized_encryption_scheme import (
     RandomizedEncryptionScheme,
 )
 
 
 class DummyEncryptionScheme(
-    RandomizedEncryptionScheme[KM, PT, RP, CV, CT],
-    AsymmetricEncryptionScheme[KM, PT, RP, CV, CT, PK, SK],
+    RandomizedEncryptionScheme[Tuple[PublicKey, SecretKey], Any, Any, Any, Any],
+    AsymmetricEncryptionScheme[Any, Any, Any, Any, Any, Any, Any],
 ):
     """
     Subclass of RandomizedEncryptionScheme for testing the randomness generation functionality.
@@ -37,69 +36,173 @@ class DummyEncryptionScheme(
     """
 
     # region mandatory functions
-    def encode(self, plaintext: PT) -> EncodedPlaintext:
+    def encode(self, plaintext: Any) -> EncodedPlaintext[Any]:
+        """
+        Method to encode a plaintext value.
+
+        :param plaintext: a plaintext value
+        :return: an encoded plaintext
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def decode(self, encoded_plaintext: EncodedPlaintext) -> PT:
+    def decode(self, encoded_plaintext: EncodedPlaintext[Any]) -> Any:
+        """
+        Method to decode an encoded plaintext value.
+
+        :param encoded_plaintext: an encoded plaintext value
+        :return: a plaintext
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def neg(self, ciphertext: Ciphertext):
+    def neg(self, ciphertext: Any) -> Any:
+        """
+        Method to negate a ciphertext value.
+
+        :param ciphertext: a ciphertext value
+        :return: a negated ciphertext
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
     def add(
         self,
-        ciphertext_1: Ciphertext,
-        ciphertext_2: Union[Ciphertext, PT],
-    ):
+        ciphertext_1: Any,
+        ciphertext_2: Union[Any, Any],
+    ) -> Any:
+        """
+        Method to sum two ciphertext values or a ciphertext with a plaintext.
+
+        :param ciphertext_1: a ciphertext value
+        :param ciphertext_2: a ciphertext, or plaintext, value
+        :return: a summed ciphertext
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
     def mul(
         self,
-        ciphertext_1: Ciphertext,
-        ciphertext_2: Union[Ciphertext, PT],
-    ):
+        ciphertext_1: Any,
+        ciphertext_2: Union[Any, Any],
+    ) -> Any:
+        """
+        Method to multiply two ciphertext values or a ciphertext with a plaintext.
+
+        :param ciphertext_1: a ciphertext value
+        :param ciphertext_2: a ciphertext, or plaintext, value
+        :return: a ciphertext (the product)
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def pow(self, ciphertext: Ciphertext, power: int):
+    def pow(self, ciphertext: Any, power: int) -> Any:
+        """
+        Method to raise a ciphertext value to the power of an integer value.
+
+        :param ciphertext: a ciphertext value
+        :param power: an integer power value
+        :return: a ciphertext (the exponent)
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
     @staticmethod
-    def generate_key_material(*args, **kwargs) -> Tuple[PK, SK]:
+    def generate_key_material(*args: Any, **kwargs: Any) -> Tuple[PublicKey, SecretKey]:
+        """
+        Static method to generate key material.
+
+        :param args: arguments used to generate key material
+        :param kwargs: keyword arguments used to generate key material
+        :return: a tuple consisting of a public key and a secret (private) key
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def _encrypt_raw(self, plaintext: EncodedPlaintext) -> Ciphertext:
+    def _encrypt_raw(self, plaintext: EncodedPlaintext[Any]) -> Any:
+        """
+        Method to encrypt an encoded plaintext value to a ciphertext.
+
+        :param plaintext: an encoded plaintext to encrypt
+        :return: a ciphertext
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def _decrypt_raw(self, ciphertext: Ciphertext) -> EncodedPlaintext:
+    def _decrypt_raw(self, ciphertext: Any) -> EncodedPlaintext[Any]:
+        """
+        Method to decrypt a ciphertext to its encoded plaintext value.
+
+        :param ciphertext: a ciphertext to decrypt
+        :return: an encoded plaintext value
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
+        """
+        Method to compare this object to another object. Returns True if they are equal.
+
+        :param other: another object
+        :return: True if the objects are equal
+        :raise NotImplementedError: is raised when not implemented
+        """
         raise NotImplementedError()
 
     @classmethod
-    def from_security_parameter(cls, *args, **kwargs) -> "EncryptionScheme":
-        pass
+    def from_security_parameter(
+        cls: Type[DummyEncryptionScheme], *args: Any, **kwargs: Any
+    ) -> DummyEncryptionScheme:
+        """
+        Class method to generate a new EncryptionScheme from a security parameter.
+
+        :param args: Security parameter(s) and optional extra arguments for the EncryptionScheme
+            constructor
+        :param kwargs: Security parameter(s) and optional extra arguments for the EncryptionScheme
+            constructor
+        :return: A new EncryptionScheme
+        :raise NotImplementedError: is raised when not implemented
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def id_from_arguments(cls) -> int:  # type: ignore[override]
+        """
+        Get the fixed ID (42) of this dummy EncryptionScheme.
+
+        :return: 42
+        """
+        return 42
 
     # endregion
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """
         Create RandomizedEncryptionScheme with the given randomness source and optional arguments.
         :param randomness: Randomness object, that is used to generate all randomness for
             this scheme.
+
         :param kwargs: Optional extra arguments for this EncryptionScheme.
         """
         RandomizedEncryptionScheme.__init__(self, **kwargs)
-        AsymmetricEncryptionScheme.__init__(self, None, None)
+        AsymmetricEncryptionScheme.__init__(self, PublicKey(), None)
 
-    def generate_randomness(self) -> int:
+    def generate_randomness(self) -> int:  # pylint: disable=no-self-use
         """
         Method to generate randomness for this particular scheme.
+
         :return: A list containing number_of_randomizations random numbers.
         """
         return randint(1, 100)
 
-    def hide_value(self, value: int):
+    def hide_value(self, value: int) -> int:
+        """
+        Method to hide a value using randomness, by xor-ing the value with randomness.
+
+        :param value: the value to be hidden
+        :return: hidden value
+        """
+
         rand = self.get_randomness()
         return value ^ rand
 
@@ -107,10 +210,35 @@ class DummyEncryptionScheme(
 prefix = Path(__file__).parents[0]
 path_small = f"{prefix}/random_numbers_small.txt"
 path_large = f"{prefix}/random_numbers_large.txt"
+BOOT_AND_GET_SLEEP_TIME = 0.5
 
 
-# This is a manual test to determine whether the program hangs due to threading
-def test_external_shutdown():
+def shut_down(scheme: DummyEncryptionScheme, signal: Event) -> None:
+    """
+    Calls shutdown on scheme and sets a signal.
+
+    :param scheme: the scheme to shutdown
+    :param signal: the signal to set
+    """
+    scheme.shut_down()
+    signal.set()
+
+
+def get_one(scheme: DummyEncryptionScheme, signal: Event) -> None:
+    """
+    Gets one random element from scheme and and sets a signal.
+
+    :param scheme: the scheme to retrieve a random element from
+    :param signal: the signal to set
+    """
+    _ = scheme.randomness.get_one()
+    signal.set()
+
+
+def test_external_shutdown() -> None:
+    """
+    Test whether the program hangs due to threading or not.
+    """
     nr_of_threads = 10
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, start_generation=True, debug=False
@@ -121,10 +249,15 @@ def test_external_shutdown():
     time.sleep(1)
 
 
-def test_boot_generation():
+def test_boot_generation() -> None:
+    """
+    Test whether we can properly stop and start new generation threads.
+    """
     nr_of_threads = 3
     scheme = DummyEncryptionScheme(
-        nr_of_threads=nr_of_threads, start_generation=False, debug=True
+        nr_of_threads=nr_of_threads,
+        start_generation=False,
+        debug=True,
     )
     assert len(scheme.randomness.generation_threads) == nr_of_threads
     assert scheme.randomness.path is None
@@ -144,20 +277,19 @@ def test_boot_generation():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def shut_down():
-        scheme.shut_down()
-        signal.set()
-
-    t = Thread(target=shut_down, daemon=True)
-    t.start()
+    shut_down_thread = Thread(target=shut_down, daemon=True, args=(scheme, signal))
+    shut_down_thread.start()
 
     # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set()
 
 
-def test_shutdown_no_threads():
+def test_shutdown_no_threads() -> None:
+    """
+    Test whether we can properly call the shut down for generation threads when none exist.
+    """
     nr_of_threads = 0
     scheme = DummyEncryptionScheme(nr_of_threads=nr_of_threads, start_generation=True)
     scheme.randomness.debug = True
@@ -168,20 +300,19 @@ def test_shutdown_no_threads():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def shut_down():
-        scheme.shut_down()
-        signal.set()
-
-    t = Thread(target=shut_down, daemon=True)
-    t.start()
+    shut_down_thread = Thread(target=shut_down, daemon=True, args=(scheme, signal))
+    shut_down_thread.start()
 
     # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set()
 
 
-def test_shutdown_no_generation():
+def test_shutdown_no_generation() -> None:
+    """
+    Test whether we can properly shut down threads that are currently not generating.
+    """
     nr_of_threads = 3
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, path=path_small, start_generation=False
@@ -192,20 +323,20 @@ def test_shutdown_no_generation():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def shut_down():
-        scheme.shut_down()
-        signal.set()
-
-    t = Thread(target=shut_down, daemon=True)
-    t.start()
+    shut_down_thread = Thread(target=shut_down, daemon=True, args=(scheme, signal))
+    shut_down_thread.start()
 
     # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set()
 
 
-def test_shutdown_generation_small():
+def test_shutdown_generation_small() -> None:
+    """
+    Test whether we can properly shut down a generating threads that obtain randomness from a
+    small file.
+    """
     nr_of_threads = 1
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, path=path_small, start_generation=True
@@ -217,20 +348,20 @@ def test_shutdown_generation_small():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def shut_down():
-        scheme.shut_down()
-        signal.set()
-
-    t = Thread(target=shut_down, daemon=True)
-    t.start()
+    shut_down_thread = Thread(target=shut_down, daemon=True, args=(scheme, signal))
+    shut_down_thread.start()
 
     # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set()
 
 
-def test_shutdown_generation_large():
+def test_shutdown_generation_large() -> None:
+    """
+    Test whether we can properly shut down a generating threads that obtain randomness from a
+    large file.
+    """
     nr_of_threads = 1
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, path=path_large, start_generation=True
@@ -242,20 +373,20 @@ def test_shutdown_generation_large():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def shut_down():
-        scheme.shut_down()
-        signal.set()
-
-    t = Thread(target=shut_down, daemon=True)
-    t.start()
+    shut_down_thread = Thread(target=shut_down, daemon=True, args=(scheme, signal))
+    shut_down_thread.start()
 
     # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set()
 
 
-def test_get_one_no_threads():
+def test_get_one_no_threads() -> None:
+    """
+    Test whether the get one random element call is not blocking when no randomness threads are
+    used.
+    """
     nr_of_threads = 0
     scheme = DummyEncryptionScheme(nr_of_threads=nr_of_threads, start_generation=True)
     scheme.randomness.debug = True
@@ -265,20 +396,20 @@ def test_get_one_no_threads():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def get_one():
-        _ = scheme.randomness.get_one()
-        signal.set()
+    get_one_thread = Thread(target=get_one, daemon=True, args=(scheme, signal))
+    get_one_thread.start()
 
-    t = Thread(target=get_one, daemon=True)
-    t.start()
-
-    # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    # get_one should happen quickly
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set(), "the get_one call is blocking"
 
 
-def test_get_one_with_threads_no_generation():
+def test_get_one_with_threads_no_generation() -> None:
+    """
+    Test whether the get one random element call is not blocking when no randomness is generated,
+    but threads do exist.
+    """
     nr_of_threads = 5
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, path=path_large, start_generation=False
@@ -290,21 +421,21 @@ def test_get_one_with_threads_no_generation():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def get_one():
-        _ = scheme.randomness.get_one()
-        signal.set()
+    get_one_thread = Thread(target=get_one, daemon=True, args=(scheme, signal))
+    get_one_thread.start()
 
-    t = Thread(target=get_one, daemon=True)
-    t.start()
-
-    # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    # get_one should happen quickly
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set(), "the get_one call is blocking"
     scheme.shut_down()
 
 
-def test_get_one_with_threads_with_generation():
+def test_get_one_with_threads_with_generation() -> None:
+    """
+    Test whether the get one random element call is not blocking, when randomness is being
+    generated, by a couple of threads and from a large file.
+    """
     nr_of_threads = 5
     scheme = DummyEncryptionScheme(
         nr_of_threads=nr_of_threads, path=path_large, start_generation=True
@@ -316,21 +447,67 @@ def test_get_one_with_threads_with_generation():
     # we now confirm whether the scheme is still able to shut down
     signal = Event()
 
-    def get_one():
-        _ = scheme.randomness.get_one()
-        signal.set()
+    get_one_thread = Thread(target=get_one, daemon=True, args=(scheme, signal))
+    get_one_thread.start()
 
-    t = Thread(target=get_one, daemon=True)
-    t.start()
-
-    # shutdown should happen within <Randomness.default_shutdown_timeout> seconds
-    time.sleep(0.5)
+    # get_one should happen quickly
+    time.sleep(BOOT_AND_GET_SLEEP_TIME)
     scheme.randomness.safe_print("checking assert")
     assert signal.is_set(), "the get_one call is blocking"
     scheme.shut_down()
 
 
-def test_generation_worker():
+def test_bounded_generation() -> None:
+    """
+    Test whether the randomness generation is stopped when a bound is given.
+    """
+    with pytest.warns(None) as warnings:
+        nr_of_threads = 5
+        generation_bound = 10
+        scheme = DummyEncryptionScheme(
+            nr_of_threads=nr_of_threads, total=generation_bound, start_generation=False
+        )
+        scheme.randomness.debug = True
+        time.sleep(0.1)
+
+        scheme.randomness.start_generating()
+        time.sleep(BOOT_AND_GET_SLEEP_TIME)
+        scheme.randomness.safe_print("checking assert")
+        assert (
+            not scheme.randomness._generating.is_set()  # pylint: disable=protected-access
+        ), "The scheme is still set to generate."
+        assert (
+            scheme.randomness.total == generation_bound
+        ), f"Bound is {scheme.randomness.total}, expected {generation_bound}."
+    assert not warnings, f"Warnings received {[str(_) for _ in warnings]}."
+    scheme.shut_down()
+
+
+def test_bounded_generation_warning() -> None:
+    """
+    Test whether the bounded randomness generation sends a warning when surpassing bound.
+    """
+    with pytest.warns(UserWarning) as _:
+        nr_of_threads = 5
+        generation_bound = 100
+        scheme = DummyEncryptionScheme(
+            nr_of_threads=nr_of_threads, total=generation_bound, start_generation=False
+        )
+        scheme.randomness.debug = True
+        time.sleep(0.1)
+
+        scheme.randomness.start_generating()
+        overflow = generation_bound + nr_of_threads + 1
+        for _ in range(overflow):
+            scheme.randomness.get_one()
+    scheme.shut_down()
+
+
+def test_generation_worker() -> None:
+    """
+    Test whether a scheme with only one generating thread generates and returns randomness
+    correctly.
+    """
     scheme = DummyEncryptionScheme(nr_of_threads=1)
     len_check_1 = len(scheme.randomness)
     time.sleep(2)
@@ -347,12 +524,12 @@ def test_generation_worker():
     assert (
         len_check_3 == len_check_4
     ), "workers did not stop generating after stop sign was given"
-    x = scheme.hide_value(1)
+    _ = scheme.hide_value(1)
     # the generation worker could have been still buffering, so the length can be either
     # len_check_4 or len_check_4 - 1
     # to confirm, hide another value. The buffer length should then be decreased by 1
     len_check_5 = len(scheme.randomness)
-    y = scheme.hide_value(0)
+    _ = scheme.hide_value(0)
     len_check_6 = len(scheme.randomness)
     scheme.shut_down()
     assert (
@@ -360,7 +537,10 @@ def test_generation_worker():
     ), "queue size did not change after hiding operation"
 
 
-def test_file_worker():
+def test_file_worker() -> None:
+    """
+    Test whether a scheme with only one file worker generates and returns randomness correctly.
+    """
     scheme = DummyEncryptionScheme(nr_of_threads=0, path=path_small)
     len_check_1 = len(scheme.randomness)
     time.sleep(2)
@@ -377,13 +557,13 @@ def test_file_worker():
     assert (
         len_check_3 == len_check_4
     ), "workers did not stop generating after stop sign was given"
-    x = scheme.hide_value(1)
+    _ = scheme.hide_value(1)
     # the file worker could be waiting until a spot in the queue is freed up
     # (this happens when the buffer is full), so the length can be either
     # len_check_4 or len_check_4 - 1
     # to confirm, hide another value. The buffer length should then be decreased by 1
     len_check_5 = len(scheme.randomness)
-    y = scheme.hide_value(0)
+    _ = scheme.hide_value(0)
     len_check_6 = len(scheme.randomness)
     scheme.shut_down()
     assert (
@@ -391,7 +571,11 @@ def test_file_worker():
     ), "queue size did not change after hiding operation"
 
 
-def test_combined_workers():
+def test_combined_workers() -> None:
+    """
+    Test whether a scheme with multiple generating threads and a file thread generates and
+    returns randomness properly.
+    """
     nr_of_threads = 10
     scheme = DummyEncryptionScheme(nr_of_threads=nr_of_threads, path=path_small)
     len_check_1 = len(scheme.randomness)
@@ -414,8 +598,8 @@ def test_combined_workers():
     # can stay the same over the next <nr_of_threads> + 1 hiding operations
     # to confirm, hide as many values as there are workers.
     # The hiding operations afterwards should then decrease the buffer length by 1
-    for i in range(nr_of_threads + 1):
-        _ = scheme.hide_value(1)
+    for _ in range(nr_of_threads + 1):
+        __ = scheme.hide_value(1)
     len_check_5 = len(scheme.randomness)
     _ = scheme.hide_value(0)
     len_check_6 = len(scheme.randomness)
@@ -425,7 +609,10 @@ def test_combined_workers():
     ), "queue size did not change after hiding operation"
 
 
-def test_resume_generation():
+def test_resume_generation() -> None:
+    """
+    Tests whether stopping and resuming randomness generation works as intended.
+    """
     nr_of_threads = 10
     scheme = DummyEncryptionScheme(nr_of_threads=nr_of_threads, path=path_small)
     time.sleep(2)
@@ -442,11 +629,11 @@ def test_resume_generation():
     # can stay the same over the next <nr_of_threads> + 1 hiding operations
     # to confirm, hide as many values as there are workers.
     # The hiding operations afterwards should then decrease the buffer length by 1
-    for i in range(nr_of_threads + 1):
-        _ = scheme.hide_value(1)
+    for _ in range(nr_of_threads + 1):
+        __ = scheme.hide_value(1)
     len_check_5 = len(scheme.randomness)
-    for i in range(10):
-        _ = scheme.hide_value(0)
+    for _ in range(10):
+        __ = scheme.hide_value(0)
     len_check_6 = len(scheme.randomness)
     assert (
         len_check_6 == len_check_5 - 10
@@ -458,7 +645,10 @@ def test_resume_generation():
     assert len_check_7 > len_check_6, "generation did not resume"
 
 
-def test_adding_worker():
+def test_adding_worker() -> None:
+    """
+    Tests whether adding a worker to an encryption scheme works as intended.
+    """
     nr_of_threads = 10
     scheme = DummyEncryptionScheme(nr_of_threads=nr_of_threads, path=path_small)
     time.sleep(0.2)

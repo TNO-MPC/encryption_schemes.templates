@@ -1,18 +1,9 @@
 """
 Generic classes used for creating an encryption scheme.
 """
-
+import inspect
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    cast,
-    ClassVar,
-    Dict,
-    Generic,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, ClassVar, Dict, Generic, Optional, Type, TypeVar, Union, cast
 
 from typing_extensions import Protocol, runtime_checkable
 
@@ -25,7 +16,9 @@ TCov = TypeVar("TCov", covariant=True)
 
 @runtime_checkable
 class SupportsNeg(Protocol[TCov]):
-    """An ABC with one abstract method __neg__."""
+    """
+    An ABC with one abstract method __neg__.
+    """
 
     __slots__ = ()
 
@@ -218,36 +211,122 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         :return: A new EncryptionScheme.
         """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self) -> None:
         """
         Construct a new EncryptionScheme.
         """
+        self.__identifier: Optional[int] = None
+
+    def save_globally(self, overwrite: bool = False) -> None:
+        """
+        Save this instance in a global list for accessibility using its identifier.
+
+        :param overwrite: overwrite an entry in the global list of the IDs coincide
+        :raises KeyError: If the ID already exists in the global list and overwrite is False
+        """
+        if (
+            self.identifier in type(self)._instances
+            and type(self)._instances[self.identifier] is not self
+            and not overwrite
+        ):
+            raise KeyError(
+                f"A different scheme with the same ID ({self.identifier}) is already saved "
+                f"globally. Use "
+                f"{type(self).__name__}.from_id or {type(self).__name__}.from_id_arguments  "
+                f"if you want to retrieve the "
+                f"existing scheme."
+            )
+        type(self)._instances[self.identifier] = self
+
+    def remove_from_global_list(self) -> None:
+        """
+        If this instance is saved in the global list, remove it.
+        """
+        if self.identifier in type(self)._instances:
+            type(self)._instances.pop(self.identifier)
+
+    @classmethod
+    def clear_instances(cls) -> None:
+        """
+        Clear the list of globally saved instances
+        """
+        cls._instances = {}
+
+    @classmethod
+    def from_id(cls, identifier: int) -> ES:
+        """
+        Return the EncryptionScheme with this identifier that is stored in the global list.
+
+        :param identifier: Identifier of the encryption scheme.
+        :raise KeyError: If no scheme with this ID was found in the global list.
+        :return: EncryptionScheme belonging to this identifier.
+        """
+        if identifier in cls._instances:
+            return cast(ES, cls._instances[identifier])
+        raise KeyError(
+            "No scheme with this ID has been saved globally. If you want a scheme "
+            "to be accessible globally, you need to call save_globally."
+        )
 
     # region Quasi-singleton logic
 
     @classmethod
-    def get_instance(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
+    def from_id_arguments(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
         """
-        Alternative to the constructor function to obtain a quasi-singleton object.
-        This function can be called whenever a scheme needs to be initiated and ensures that
-        identical calls will return a reference to the same object.
+        Function that calls id_from_arguments to obtain an identifier for this scheme and
+        then retrieves a scheme from the global list of saved schemes using from_id.
 
         :param args: regular arguments that would normally go into the constructor
         :param kwargs: regular keyword arguments that would normally go into the constructor
-        :return: Either a newly instantiated scheme or a reference to an already existing scheme
+        :return: An EncryptionScheme with the same ID if one has been saved globally
         """
         identifier = cls.id_from_arguments(*args, **kwargs)
-        if identifier in cls._instances:
-            instance = cls._instances[identifier]
-            # assert correct class, since _instances is shared among all EncryptionSchemes
-            assert isinstance(instance, cls)
-            return instance
-        # else
-        instance = cls(*args, **kwargs)
-        cls._instances[identifier] = instance
-        return instance
+        return cls.from_id(identifier=identifier)
+
+    @property
+    def identifier(self) -> int:
+        """
+        Property that returns an identifier for the scheme. It calls id_from_arguments and inspects
+        id_from_arguments to see which parameter names are required. It then searches for these
+        parameter names in the variables and properties of self and uses their values as input
+        to the function. Note that this requires the parameter names to id_from_arguments to
+        have the same name as their respective variables/properties in the scheme.
+
+        :raise KeyError: In cast there is a mismatch between the argument names in
+            id_from_arguments and the parameter names and properties of the class.
+        :return: An identifier of type int
+        """
+        if self.__identifier is None:
+            argument_names = [
+                name
+                for name in inspect.getfullargspec(self.id_from_arguments)[0]
+                if name != "cls"
+            ]
+            kwargs = {}
+            members = self.__dir__()
+            for name in argument_names:
+                if name not in members:
+                    raise KeyError(
+                        f"The id_from_arguments function of class {type(self).__name__} has "
+                        f"parameter names as input that are not variables of the class. The name "
+                        f"that triggered this error was {name}. There is a mismatch between "
+                        f"parameter names of "
+                        f"id_from_arguments and their respective variable name of the class, so"
+                        f" make sure they are the same.\n"
+                    )
+                value = getattr(self, name)
+                if callable(value):
+                    raise TypeError(
+                        f"{type(self).__name__}.{name} should be a variable or property,"
+                        f" but it is a function."
+                    )
+                kwargs[name] = value
+            identifier = self.id_from_arguments(**kwargs)
+            self.__identifier = identifier
+        return self.__identifier
 
     @classmethod
+    @abstractmethod
     def id_from_arguments(cls, *args: Any, **kwargs: Any) -> int:
         """
         Method that turns the arguments for the constructor into an identifier. This identifier is
@@ -257,9 +336,6 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         :param kwargs: regular keyword arguments
         :return: identifier of type int
         """
-        return hash(
-            tuple("from args") + tuple(args) + tuple(kwargs[i] for i in sorted(kwargs))
-        )
 
     # endregion
 
@@ -337,7 +413,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     @abstractmethod
     def _decrypt_raw(self, ciphertext: CT) -> EncodedPlaintext[RP]:
         """
-        Decrypts an ciphertext to its encoded plaintext value.
+        Decrypts a ciphertext to its encoded plaintext value.
 
         :param ciphertext: Ciphertext object containing the ciphertext to be decrypted.
         :return: EncodedPlaintext object containing the encoded decryption of the ciphertext.
@@ -408,4 +484,9 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
     @abstractmethod
     def __eq__(self, other: object) -> bool:
-        pass
+        """
+        Method that determines whether two EncryptionSchemes are the same
+
+        :param other: EncryptionScheme to be compared to self
+        :return: whether they are the same scheme
+        """
