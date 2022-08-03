@@ -93,12 +93,12 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
 
     @classmethod
     def from_security_parameter(cls: Type[SE], *args: Any, **kwargs: Any) -> SE:
-        """
+        r"""
         Generate a new SymmetricEncryptionScheme from a security parameter.
 
-        :param args: Security parameter(s) and optional extra arguments for the
+        :param \*args: Security parameter(s) and optional extra arguments for the
             SymmetricEncryptionScheme constructor.
-        :param kwargs: Security parameter(s) and optional extra arguments for the
+        :param \**kwargs: Security keyword parameter(s) and optional extra arguments for the
             SymmetricEncryptionScheme constructor.
         :return: Symmetric cryptographic scheme
         """
@@ -114,26 +114,25 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
         symmetric_key = cls.generate_key_material(*args, **gen_kwargs)
         return cls(symmetric_key, **init_kwargs)
 
-    def __init__(self, key: SK, **_kwargs: Any):
-        """
+    def __init__(self, key: SK, *_args: Any, **_kwargs: Any) -> None:
+        r"""
         Construct a SymmetricEncryptionScheme with the given key.
 
         :param key: Symmetric key.
-        :param kwargs: Possible extra parameters for this scheme.
+        :param \*_args: Possible extra parameters for this scheme.
+        :param \**_kwargs: Possible extra keyword parameters for this scheme.
         """
         self.__key = key
         EncryptionScheme.__init__(self)
 
     @staticmethod
     def generate_key_material(  # type: ignore[override]
-        bit_length: int, *_args: Any, **_kwargs: Any
+        bit_length: int,
     ) -> SymmetricKey:
-        """
+        r"""
         Method to generate key material (SymmetricKey) for this scheme.
 
         :param bit_length: Desired bit security of the secret key
-        :param _args: Required arguments to generate said key material.
-        :param _kwargs: Required arguments to generate said key material.
         :return: The SymmetricKey that was generated.
         """
         return SymmetricKey.from_sec_param(bit_length)
@@ -153,20 +152,25 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
             )
         return isinstance(other, type(self)) and self.__key == other.key
 
-    def serialize(self) -> Dict[str, Dict[str, int]]:
-        """
+    def serialize(self, **_kwargs: Any) -> Dict[str, Dict[str, int]]:
+        r"""
         Serialize the key of this encryption scheme.
 
+        :param \**_kwargs: Unused parameters to adhere to
+            tno.mpc.communication.SupportsSerializiation protocol.
         :return: Serialized key.
         """
         return {"key": self.__key.serialize()}
 
     @classmethod
-    def deserialize(cls: Type[SE], json: Dict[str, Dict[str, int]]) -> SE:
-        """
+    def deserialize(
+        cls: Type[SE], json: Dict[str, Dict[str, int]], **_kwargs: Any
+    ) -> SE:
+        r"""
         Construct this scheme from the serialization.
 
         :param json: Serialization of this scheme.
+        :param \**_kwargs: Optional extra keyword arguments.
         :return: An initialized version of this scheme.
         """
         key = SymmetricKey.deserialize(json["key"])

@@ -6,7 +6,6 @@ id that is used for that purpose.
 from __future__ import annotations
 
 from abc import ABC
-from random import randint
 from typing import Any, Type, Union, cast
 
 import pytest
@@ -177,11 +176,11 @@ class DummyScheme(EncryptionScheme[Any, Any, Any, Any, Any], ABC):
 
     @staticmethod
     def generate_key_material(*args: Any, **kwargs: Any) -> KM:
-        """
+        r"""
         Stub
 
-        :param args: -
-        :param kwargs: -
+        :param \*args: -
+        :param \**kwargs: -
         :return: -
         """
 

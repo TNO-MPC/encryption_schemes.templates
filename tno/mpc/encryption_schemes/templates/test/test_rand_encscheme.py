@@ -109,19 +109,19 @@ class DummyEncryptionScheme(
 
     @staticmethod
     def generate_key_material(*args: Any, **kwargs: Any) -> Tuple[PublicKey, SecretKey]:
-        """
+        r"""
         Static method to generate key material.
 
-        :param args: arguments used to generate key material
-        :param kwargs: keyword arguments used to generate key material
+        :param \*args: arguments used to generate key material
+        :param \**kwargs: keyword arguments used to generate key material
         :return: a tuple consisting of a public key and a secret (private) key
         :raise NotImplementedError: is raised when not implemented
         """
         raise NotImplementedError()
 
-    def _encrypt_raw(self, plaintext: EncodedPlaintext[Any]) -> Any:
+    def _unsafe_encrypt_raw(self, plaintext: EncodedPlaintext[Any]) -> Any:
         """
-        Method to encrypt an encoded plaintext value to a ciphertext.
+        Method to encrypt an encoded plaintext value to a ciphertext without randomization.
 
         :param plaintext: an encoded plaintext to encrypt
         :return: a ciphertext
@@ -153,12 +153,12 @@ class DummyEncryptionScheme(
     def from_security_parameter(
         cls: Type[DummyEncryptionScheme], *args: Any, **kwargs: Any
     ) -> DummyEncryptionScheme:
-        """
+        r"""
         Class method to generate a new EncryptionScheme from a security parameter.
 
-        :param args: Security parameter(s) and optional extra arguments for the EncryptionScheme
+        :param \*args: Security parameter(s) and optional extra arguments for the EncryptionScheme
             constructor
-        :param kwargs: Security parameter(s) and optional extra arguments for the EncryptionScheme
+        :param \**kwargs: Security parameter(s) and optional extra arguments for the EncryptionScheme
             constructor
         :return: A new EncryptionScheme
         :raise NotImplementedError: is raised when not implemented
@@ -177,12 +177,12 @@ class DummyEncryptionScheme(
     # endregion
 
     def __init__(self, **kwargs: Any) -> None:
-        """
+        r"""
         Create RandomizedEncryptionScheme with the given randomness source and optional arguments.
         :param randomness: Randomness object, that is used to generate all randomness for
             this scheme.
 
-        :param kwargs: Optional extra arguments for this EncryptionScheme.
+        :param \**kwargs: Optional extra arguments for this EncryptionScheme.
         """
         RandomizedEncryptionScheme.__init__(self, **kwargs)
         AsymmetricEncryptionScheme.__init__(self, PublicKey(), None)
@@ -461,7 +461,7 @@ def test_bounded_generation() -> None:
     """
     Test whether the randomness generation is stopped when a bound is given.
     """
-    with pytest.warns(None) as warnings:
+    with pytest.warns(None) as warnings:  # type: ignore
         nr_of_threads = 5
         generation_bound = 10
         scheme = DummyEncryptionScheme(

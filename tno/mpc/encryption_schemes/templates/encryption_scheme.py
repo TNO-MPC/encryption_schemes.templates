@@ -3,15 +3,33 @@ Generic classes used for creating an encryption scheme.
 """
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Generic, Optional, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from typing_extensions import Protocol, runtime_checkable
 
-PT = TypeVar("PT")
-RP = TypeVar("RP")
-KM = TypeVar("KM")
-CV = TypeVar("CV")
+PT = TypeVar("PT")  # plaintext        - type of non-encoded plaintext
+RP = TypeVar("RP")  # raw plaintext    - type of EncodedPlaintext.value
+KM = TypeVar("KM")  # key material
+CV = TypeVar("CV")  # ciphertext value - type of Ciphertext.value
 TCov = TypeVar("TCov", covariant=True)
+
+
+class EncryptionSchemeWarning(UserWarning):
+    """
+    Issued to suggest cryptographic best practises.
+    """
 
 
 @runtime_checkable
@@ -32,7 +50,9 @@ class EncodedPlaintext(Generic[RP]):
     Class that contains the encoding of a plaintext for a particular scheme.
     """
 
-    def __init__(self, value: RP, scheme: "EncryptionScheme[KM, PT, RP, CV, CT]"):
+    def __init__(
+        self, value: RP, scheme: "EncryptionScheme[KM, PT, RP, CV, CT]"
+    ) -> None:
         """
         Constructs an EncodedPlaintext with the given value and encoding as specified in the scheme.
 
@@ -73,14 +93,18 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
     """
 
     def __init__(
-        self: CT, raw_value: CV, scheme: "EncryptionScheme[KM, PT, RP, CV, CT]"
-    ):
-        """
+        self: CT,
+        raw_value: CV,
+        scheme: "EncryptionScheme[KM, PT, RP, CV, CT]",
+        **_kwargs: Any,
+    ) -> None:
+        r"""
         Constructs a Ciphertext with the given ciphertext value encrypted using the specified
         scheme.
 
         :param raw_value: value of the ciphertext
         :param scheme: encryption scheme used for creating this ciphertext
+        :param \**_kwargs: Optional extra keyword arguments for the constructor.
         """
         self._raw_value = raw_value
         self.scheme = scheme
@@ -182,6 +206,12 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.pow(self, power)
 
+    def __str__(self) -> str:
+        """
+        :return: String representation of Ciphertext.
+        """
+        return f"{self.__class__.__name__}<value={str(self.value)}>"
+
 
 ES = TypeVar("ES", bound="EncryptionScheme[Any, Any, Any, Any, Any]")
 
@@ -201,19 +231,23 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     @classmethod
     @abstractmethod
     def from_security_parameter(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
-        """
+        r"""
         Generate a new EncryptionScheme from a security parameter.
 
-        :param args: Security parameter(s) and optional extra arguments for the EncryptionScheme
+        :param \*args: Security parameter(s) and optional extra arguments for the EncryptionScheme
             constructor.
-        :param kwargs: Security parameter(s) and optional extra arguments for the EncryptionScheme
-            constructor.
+        :param \**kwargs: Security parameter(s) and optional extra arguments for the
+            EncryptionScheme constructor.
         :return: A new EncryptionScheme.
         """
 
-    def __init__(self) -> None:
-        """
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        r"""
         Construct a new EncryptionScheme.
+
+        :param \*_args: Optional extra arguments for the constructor of a concrete implementation.
+        :param \**_kwargs: Optional extra keyword arguments for the constructor of a concrete
+            implementation.
         """
         self.__identifier: Optional[int] = None
 
@@ -272,12 +306,12 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
     @classmethod
     def from_id_arguments(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
-        """
+        r"""
         Function that calls id_from_arguments to obtain an identifier for this scheme and
         then retrieves a scheme from the global list of saved schemes using from_id.
 
-        :param args: regular arguments that would normally go into the constructor
-        :param kwargs: regular keyword arguments that would normally go into the constructor
+        :param \*args: regular arguments that would normally go into the constructor
+        :param \**kwargs: regular keyword arguments that would normally go into the constructor
         :return: An EncryptionScheme with the same ID if one has been saved globally
         """
         identifier = cls.id_from_arguments(*args, **kwargs)
@@ -328,12 +362,12 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     @classmethod
     @abstractmethod
     def id_from_arguments(cls, *args: Any, **kwargs: Any) -> int:
-        """
+        r"""
         Method that turns the arguments for the constructor into an identifier. This identifier is
         used to find constructor calls that would result in identical schemes.
 
-        :param args: regular arguments
-        :param kwargs: regular keyword arguments
+        :param \*args: regular arguments
+        :param \**kwargs: regular keyword arguments
         :return: identifier of type int
         """
 
@@ -342,11 +376,11 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     @staticmethod
     @abstractmethod
     def generate_key_material(*args: Any, **kwargs: Any) -> KM:
-        """
+        r"""
         Method to generate key material (format depending on the type of scheme) for this scheme.
 
-        :param args: Required arguments to generate said key material.
-        :param kwargs: Required arguments to generate said key material.
+        :param \*args: Required arguments to generate said key material.
+        :param \**kwargs: Required keyword arguments to generate said key material.
         """
 
     @abstractmethod
@@ -375,15 +409,30 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
         :param plaintext: Plaintext or EncodedPlaintext to be encrypted.
         :param apply_encoding: Boolean indicating whether a non-encoded plaintext should be encoded.
-            If False, the plaintext is encrypted in raw form. Defaults to True.
+            If False, the plaintext is encrypted in raw form.
         :return: Ciphertext object containing the encrypted value of the plaintext.
         """
-        if not isinstance(plaintext, EncodedPlaintext):
-            if apply_encoding:
-                plaintext = self.encode(plaintext)
-            else:
-                plaintext = EncodedPlaintext(cast(RP, plaintext), self)
-        return self._encrypt_raw(plaintext)
+        if isinstance(plaintext, EncodedPlaintext):
+            return self._encrypt_raw(plaintext)
+        if apply_encoding:
+            return self._encrypt_raw(self.encode(plaintext))
+        return self._encrypt_raw(EncodedPlaintext(cast(RP, plaintext), self))
+
+    def encrypt_sequence(
+        self,
+        plaintext_sequence: Iterable[Union[PT, EncodedPlaintext[RP]]],
+        apply_encoding: bool = True,
+    ) -> Iterator[CT]:
+        """
+        Encrypts the entered sequence of (encoded) Plaintext. Also encodes a Plaintext when this is required.
+
+        :param plaintext_sequence: Sequence of Plaintext or EncodedPlaintext to be encrypted.
+        :param apply_encoding: Boolean indicating whether a non-encoded plaintext should be encoded.
+            If False, the plaintext is encrypted in raw form.
+        :return: Ciphertext object containing the encrypted value of the plaintext.
+        """
+        for plaintext in plaintext_sequence:
+            yield self.encrypt(plaintext, apply_encoding)
 
     def decrypt(self, ciphertext: CT, apply_encoding: bool = True) -> PT:
         """
@@ -391,7 +440,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
         :param ciphertext: Ciphertext to be decrypted.
         :param apply_encoding: Boolean indicating whether the decrypted ciphertext is decoded
-            before it is returned. Defaults to True.
+            before it is returned.
         :return: Plaintext decrypted value.
         """
         decrypted_ciphertext = self._decrypt_raw(ciphertext)
@@ -400,6 +449,20 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
             if apply_encoding
             else cast(PT, decrypted_ciphertext.value)
         )
+
+    def decrypt_sequence(
+        self, ciphertext_sequence: Iterable[CT], apply_encoding: bool = True
+    ) -> Iterator[PT]:
+        """
+        Decrypts the list of input ciphertext.
+
+        :param ciphertext_sequence: Sequence of Ciphertext to be decrypted.
+        :param apply_encoding: Boolean indicating whether the decrypted ciphertext is decoded
+            before it is returned.
+        :return: A list of Plaintext decrypted values.
+        """
+        for ciphertext in ciphertext_sequence:
+            yield self.decrypt(ciphertext, apply_encoding)
 
     @abstractmethod
     def _encrypt_raw(self, plaintext: EncodedPlaintext[RP]) -> CT:

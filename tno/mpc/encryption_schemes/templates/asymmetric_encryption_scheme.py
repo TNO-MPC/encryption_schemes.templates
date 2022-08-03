@@ -40,15 +40,15 @@ class AsymmetricEncryptionScheme(
 
     @classmethod
     def from_security_parameter(cls: Type[AE], *args: Any, **kwargs: Any) -> AE:
-        """
+        r"""
         Generate a new AsymmetricEncryptionScheme from a security parameter. Note that regular
         arguments will be passed to the generate_key_material  method, so all parameter that are
         required for the constructor should be passed as keyword arguments.
 
-        :param args: Security parameter(s) for key generation.
-        :param kwargs: Security parameter(s) and optional extra arguments for the EncryptionScheme
+        :param \*args: Security parameter(s) for key generation.
+        :param \**kwargs: Security parameter(s) and optional extra arguments for the constructor.
+        :raises ValueError: If a keyword argument is not valid for key generation or the
             constructor.
-        :raises ValueError: If a keyword argument is not valid for key generation or the constructor
         :return: A new EncryptionScheme.
         """
         gen_names = inspect.getfullargspec(cls.generate_key_material)[0]
@@ -74,27 +74,28 @@ class AsymmetricEncryptionScheme(
         public_key, secret_key = cast(
             Tuple[PK, SK], cls.generate_key_material(*args, **gen_kwargs)
         )
-        return cls(public_key, secret_key, **init_kwargs)  # type: ignore[call-arg]
+        return cls(public_key, secret_key, **init_kwargs)
 
     @classmethod
     def from_public_key(cls: Type[AE], public_key: PK, **kwargs: Any) -> AE:
-        """
+        r"""
         Generate a new AsymmetricEncryptionScheme from a public key (e.g. when received from another
         party) and possibly additional parameters.
 
         :param public_key: The PublicKey of this scheme instantiation.
-            constructor.
-        :param kwargs: Optional extra arguments for the EncryptionScheme constructor.
+        :param \**kwargs: Optional extra keyword arguments for the constructor.
         :return: A new EncryptionScheme.
         """
-        return cls(public_key=public_key, secret_key=None, **kwargs)  # type: ignore[call-arg]
+        return cls(public_key=public_key, secret_key=None, **kwargs)
 
     def __init__(
         self,
         public_key: PK,
         secret_key: Optional[SK],
-    ):
-        """
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
+        r"""
         Construct an AsymmetricEncryptionScheme with the given keypair and optional keyword
         arguments. All keyword arguments are combined with the public key to create an ID, so all
         the __init__ of a custom subclass of AsymmetricEncryptionScheme should pass all their
@@ -104,6 +105,9 @@ class AsymmetricEncryptionScheme(
 
         :param public_key: Asymmetric PublicKey.
         :param secret_key: Asymmetric SecretKey, might be None when the SecretKey is unknown.
+        :param \*_args: Optional extra arguments for the constructor of a concrete implementation.
+        :param \**_kwargs: Optional extra keyword arguments for the constructor of a concrete
+            implementation.
         """
         self.__pk = public_key
         self.__sk = secret_key
@@ -113,11 +117,11 @@ class AsymmetricEncryptionScheme(
     @classmethod
     @abstractmethod
     def generate_key_material(cls, *args: Any, **kwargs: Any) -> KM:
-        """
+        r"""
         Method to generate key material (PublicKey and SecretKey) for this scheme.
 
-        :param args: Required arguments to generate said key material.
-        :param kwargs: Required arguments to generate said key material.
+        :param \*args: Required arguments to generate said key material.
+        :param \**kwargs: Required arguments to generate said key material.
         :return: Tuple containing first the PublicKey of this scheme and then the SecretKey.
         """
 
