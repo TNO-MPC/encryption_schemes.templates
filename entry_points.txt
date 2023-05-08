@@ -1,0 +1,3 @@
+[pytest11]
+reset_encryption_scheme = tno.mpc.encryption_schemes.templates.test.pytest_plugins
+

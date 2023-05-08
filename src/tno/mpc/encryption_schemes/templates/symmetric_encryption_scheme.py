@@ -7,7 +7,7 @@ from __future__ import annotations
 import inspect
 from abc import ABC
 from secrets import randbits
-from typing import Any, Dict, List, Type, TypeVar, Union
+from typing import Any, List, TypeVar
 
 from .encryption_scheme import CT, CV, PT, RP, EncryptionScheme
 
@@ -31,7 +31,7 @@ class SymmetricKey:
         return cls(bin(rand_int))
 
     @classmethod
-    def to_bits(cls, to_convert: Union[bytes, str]) -> Bits:
+    def to_bits(cls, to_convert: bytes | str) -> Bits:
         """
         Class method that converts alternate representations of a symmetric key to the right format
 
@@ -42,7 +42,7 @@ class SymmetricKey:
             return [i - 48 for i in to_convert]
         return [int(i) for i in to_convert[2:]]
 
-    def __init__(self, key_value: Union[str, int, Bits]):
+    def __init__(self, key_value: str | int | Bits):
         if isinstance(key_value, list):
             if not all(x in [0, 1] for x in key_value):
                 raise ValueError("The elements in the provided list are not bits")
@@ -63,7 +63,7 @@ class SymmetricKey:
             )
         self.security_parameter = len(self.bits)
 
-    def serialize(self) -> Dict[str, int]:
+    def serialize(self) -> dict[str, int]:
         """
         Serialize this symmetric key.
 
@@ -72,7 +72,7 @@ class SymmetricKey:
         return {"int_value": self.value}
 
     @classmethod
-    def deserialize(cls, json: Dict[str, int]) -> SymmetricKey:
+    def deserialize(cls, json: dict[str, int]) -> SymmetricKey:
         """
         Construct this key from its serialization.
 
@@ -92,7 +92,7 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
     """
 
     @classmethod
-    def from_security_parameter(cls: Type[SE], *args: Any, **kwargs: Any) -> SE:
+    def from_security_parameter(cls: type[SE], *args: Any, **kwargs: Any) -> SE:
         r"""
         Generate a new SymmetricEncryptionScheme from a security parameter.
 
@@ -152,7 +152,7 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
             )
         return isinstance(other, type(self)) and self.__key == other.key
 
-    def serialize(self, **_kwargs: Any) -> Dict[str, Dict[str, int]]:
+    def serialize(self, **_kwargs: Any) -> dict[str, dict[str, int]]:
         r"""
         Serialize the key of this encryption scheme.
 
@@ -164,7 +164,7 @@ class SymmetricEncryptionScheme(EncryptionScheme[SK, PT, RP, CV, CT], ABC):
 
     @classmethod
     def deserialize(
-        cls: Type[SE], json: Dict[str, Dict[str, int]], **_kwargs: Any
+        cls: type[SE], json: dict[str, dict[str, int]], **_kwargs: Any
     ) -> SE:
         r"""
         Construct this scheme from the serialization.

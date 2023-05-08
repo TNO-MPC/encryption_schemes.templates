@@ -1,29 +1,27 @@
 """
 Generic classes used for creating an encryption scheme.
 """
-import inspect
-from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    ClassVar,
-    Dict,
-    Generic,
-    Iterable,
-    Iterator,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from __future__ import annotations
 
-from typing_extensions import Protocol, runtime_checkable
+import inspect
+import sys
+from abc import ABC, abstractmethod
+from typing import Any, ClassVar, Generic, Iterable, Iterator, TypeVar, cast
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol, Self, runtime_checkable
+elif sys.version_info < (3, 11):
+    from typing import Protocol, runtime_checkable
+
+    from typing_extensions import Self
+else:
+    from typing import Protocol, Self, runtime_checkable
 
 PT = TypeVar("PT")  # plaintext        - type of non-encoded plaintext
 RP = TypeVar("RP")  # raw plaintext    - type of EncodedPlaintext.value
 KM = TypeVar("KM")  # key material
 CV = TypeVar("CV")  # ciphertext value - type of Ciphertext.value
-TCov = TypeVar("TCov", covariant=True)
+T_co = TypeVar("T_co", covariant=True)
 
 
 class EncryptionSchemeWarning(UserWarning):
@@ -33,7 +31,7 @@ class EncryptionSchemeWarning(UserWarning):
 
 
 @runtime_checkable
-class SupportsNeg(Protocol[TCov]):
+class SupportsNeg(Protocol[T_co]):  # pylint: disable=too-few-public-methods
     """
     An ABC with one abstract method __neg__.
     """
@@ -41,18 +39,16 @@ class SupportsNeg(Protocol[TCov]):
     __slots__ = ()
 
     @abstractmethod
-    def __neg__(self) -> TCov:
+    def __neg__(self) -> T_co:
         pass
 
 
-class EncodedPlaintext(Generic[RP]):
+class EncodedPlaintext(Generic[RP]):  # pylint: disable=too-few-public-methods
     """
     Class that contains the encoding of a plaintext for a particular scheme.
     """
 
-    def __init__(
-        self, value: RP, scheme: "EncryptionScheme[KM, PT, RP, CV, CT]"
-    ) -> None:
+    def __init__(self, value: RP, scheme: EncryptionScheme[KM, PT, RP, CV, CT]) -> None:
         """
         Constructs an EncodedPlaintext with the given value and encoding as specified in the scheme.
 
@@ -93,9 +89,9 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
     """
 
     def __init__(
-        self: CT,
+        self,
         raw_value: CV,
-        scheme: "EncryptionScheme[KM, PT, RP, CV, CT]",
+        scheme: EncryptionScheme[KM, PT, RP, CV, Self],
         **_kwargs: Any,
     ) -> None:
         r"""
@@ -118,7 +114,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self._raw_value
 
-    def __neg__(self: CT) -> CT:
+    def __neg__(self) -> Self:
         """
         Negate the underlying plaintext of this ciphertext.
 
@@ -126,7 +122,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.neg(self)
 
-    def __add__(self: CT, other: Union[CT, PT]) -> CT:
+    def __add__(self, other: Self | PT) -> Self:
         """
         Add other to the underlying plaintext of this ciphertext.
 
@@ -137,7 +133,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.add(self, other)
 
-    def __radd__(self: CT, other: Union[CT, PT]) -> CT:
+    def __radd__(self, other: Self | PT) -> Self:
         """
         Add other to the underlying plaintext of this ciphertext.
 
@@ -148,7 +144,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.add(self, other)
 
-    def __sub__(self: CT, other: Union[CT, PT]) -> CT:
+    def __sub__(self, other: Self | PT) -> Self:
         """
         Subtract other from the underlying plaintext of this ciphertext.
 
@@ -164,7 +160,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         # else
         raise TypeError(f"Unsupported operand type for -: {type(other)}")
 
-    def __rsub__(self: CT, other: Union[CT, PT]) -> CT:
+    def __rsub__(self, other: Self | PT) -> Self:
         """
         Subtract other from the underlying plaintext of this ciphertext.
 
@@ -175,7 +171,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.add(-self, other)
 
-    def __mul__(self: CT, other: Union[CT, PT]) -> CT:
+    def __mul__(self, other: Self | PT) -> Self:
         """
         Multiply other with the underlying plaintext of this ciphertext.
 
@@ -186,7 +182,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.mul(self, other)
 
-    def __rmul__(self: CT, other: Union[CT, PT]) -> CT:
+    def __rmul__(self, other: Self | PT) -> Self:
         """
         Multiply other with the underlying plaintext of this ciphertext.
 
@@ -197,7 +193,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.mul(self, other)
 
-    def __pow__(self: CT, power: int) -> CT:
+    def __pow__(self, power: int) -> Self:
         """
         Exponentiate underlying plaintext of this ciphertext with the given exponent.
 
@@ -226,11 +222,14 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     All abstract methods should be implemented by subclasses.
     """
 
-    _instances: ClassVar[Dict[int, "EncryptionScheme[Any, Any, Any, Any, Any]"]] = {}
+    _instances: ClassVar[dict[int, EncryptionScheme[Any, Any, Any, Any, Any]]] = {}
+    _derived_schemes: ClassVar[
+        list[type[EncryptionScheme[Any, Any, Any, Any, Any]]]
+    ] = []
 
     @classmethod
     @abstractmethod
-    def from_security_parameter(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
+    def from_security_parameter(cls, *args: Any, **kwargs: Any) -> Self:
         r"""
         Generate a new EncryptionScheme from a security parameter.
 
@@ -249,7 +248,15 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         :param \**_kwargs: Optional extra keyword arguments for the constructor of a concrete
             implementation.
         """
-        self.__identifier: Optional[int] = None
+        self.__identifier: int | None = None
+
+    def __init_subclass__(cls) -> None:
+        """
+        Constructor for subclasses.
+        """
+        cls._instances = {}
+        EncryptionScheme._derived_schemes.append(cls)
+        return super().__init_subclass__()
 
     def save_globally(self, overwrite: bool = False) -> None:
         """
@@ -280,14 +287,20 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
             type(self)._instances.pop(self.identifier)
 
     @classmethod
-    def clear_instances(cls) -> None:
+    def clear_instances(cls, all_types: bool = False) -> None:
         """
-        Clear the list of globally saved instances
+        Clear the list of globally saved instances of the current derived
+        EncryptionScheme class.
+
+        :param all_types: also clear instances of other derived EncryptionSchemes.
         """
-        cls._instances = {}
+        cls._instances.clear()
+        if all_types:
+            for scheme_type in EncryptionScheme._derived_schemes:
+                scheme_type._instances.clear()
 
     @classmethod
-    def from_id(cls, identifier: int) -> ES:
+    def from_id(cls, identifier: int) -> Self:
         """
         Return the EncryptionScheme with this identifier that is stored in the global list.
 
@@ -296,7 +309,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         :return: EncryptionScheme belonging to this identifier.
         """
         if identifier in cls._instances:
-            return cast(ES, cls._instances[identifier])
+            return cast(Self, cls._instances[identifier])
         raise KeyError(
             "No scheme with this ID has been saved globally. If you want a scheme "
             "to be accessible globally, you need to call save_globally."
@@ -305,7 +318,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     # region Quasi-singleton logic
 
     @classmethod
-    def from_id_arguments(cls: Type[ES], *args: Any, **kwargs: Any) -> ES:
+    def from_id_arguments(cls, *args: Any, **kwargs: Any) -> Self:
         r"""
         Function that calls id_from_arguments to obtain an identifier for this scheme and
         then retrieves a scheme from the global list of saved schemes using from_id.
@@ -322,12 +335,14 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         """
         Property that returns an identifier for the scheme. It calls id_from_arguments and inspects
         id_from_arguments to see which parameter names are required. It then searches for these
-        parameter names in the variables and properties of self and uses their values as input
+        parameter names in the attributes and properties of self and uses their values as input
         to the function. Note that this requires the parameter names to id_from_arguments to
-        have the same name as their respective variables/properties in the scheme.
+        have the same name as their respective attributes/properties in the scheme.
 
         :raise KeyError: In cast there is a mismatch between the argument names in
             id_from_arguments and the parameter names and properties of the class.
+        :raise TypeError: At least one argument name from id_from_arguments correponds with a
+            callable rather than an attribute or property.
         :return: An identifier of type int
         """
         if self.__identifier is None:
@@ -337,22 +352,22 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
                 if name != "cls"
             ]
             kwargs = {}
-            members = self.__dir__()
+            members = dir(self)
             for name in argument_names:
                 if name not in members:
                     raise KeyError(
                         f"The id_from_arguments function of class {type(self).__name__} has "
-                        f"parameter names as input that are not variables of the class. The name "
+                        f"parameter names as input that are not attributes of the class. The name "
                         f"that triggered this error was {name}. There is a mismatch between "
                         f"parameter names of "
-                        f"id_from_arguments and their respective variable name of the class, so"
+                        f"id_from_arguments and their respective attribute name of the class, so"
                         f" make sure they are the same.\n"
                     )
                 value = getattr(self, name)
                 if callable(value):
                     raise TypeError(
-                        f"{type(self).__name__}.{name} should be a variable or property,"
-                        f" but it is a function."
+                        f"{type(self).__name__}.{name} should be an attribute or property,"
+                        f" but it is a callable."
                     )
                 kwargs[name] = value
             identifier = self.id_from_arguments(**kwargs)
@@ -402,7 +417,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         """
 
     def encrypt(
-        self, plaintext: Union[PT, EncodedPlaintext[RP]], apply_encoding: bool = True
+        self, plaintext: PT | EncodedPlaintext[RP], apply_encoding: bool = True
     ) -> CT:
         """
         Encrypts the entered (encoded) Plaintext. Also encodes the Plaintext when this is required.
@@ -420,11 +435,12 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
     def encrypt_sequence(
         self,
-        plaintext_sequence: Iterable[Union[PT, EncodedPlaintext[RP]]],
+        plaintext_sequence: Iterable[PT] | Iterable[EncodedPlaintext[RP]],
         apply_encoding: bool = True,
     ) -> Iterator[CT]:
         """
-        Encrypts the entered sequence of (encoded) Plaintext. Also encodes a Plaintext when this is required.
+        Encrypts the entered sequence of (encoded) Plaintext. Also encodes a Plaintext when this
+        is required.
 
         :param plaintext_sequence: Sequence of Plaintext or EncodedPlaintext to be encrypted.
         :param apply_encoding: Boolean indicating whether a non-encoded plaintext should be encoded.
@@ -496,7 +512,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     def add(
         self,
         ciphertext_1: CT,
-        ciphertext_2: Union[CT, PT],
+        ciphertext_2: CT | PT,
     ) -> CT:
         """
         Add the underlying plaintext value of ciphertext_1 with the (underlying) plaintext value of
@@ -515,7 +531,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
     def mul(
         self,
         ciphertext_1: CT,
-        ciphertext_2: Union[CT, PT],
+        ciphertext_2: CT | PT,
     ) -> CT:
         """
         Multiply the underlying plaintext value of ciphertext_1 with the (underlying) plaintext

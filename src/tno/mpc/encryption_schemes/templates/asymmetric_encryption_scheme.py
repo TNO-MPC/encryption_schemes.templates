@@ -1,34 +1,83 @@
 """
 Generic classes used for creating an asymmetric encryption scheme.
 """
+from __future__ import annotations
+
 import inspect
+import sys
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Optional, Tuple, Type, TypeVar, cast
+from typing import Any, Generic, Tuple, TypeVar, cast
 
 from .encryption_scheme import CT, CV, KM, PT, RP, EncryptionScheme
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol, Self
+elif sys.version_info < (3, 11):
+    from typing import Protocol
 
-class PublicKey:
+    from typing_extensions import Self
+else:
+    from typing import Protocol, Self
+
+
+class PublicKey(Protocol):
     """
     Public Key of an AsymmetricEncryptionScheme.
 
     This should be subclassed for every AsymmetricEncryptionScheme.
     """
 
+    def serialize(self, **_kwargs: Any) -> Any:
+        r"""
+        Serialization function for public keys, which will be passed to the communication module.
 
-class SecretKey:
+        :param \**_kwargs: Optional extra keyword arguments.
+        :raise SerializationError: When communication library is not installed.
+        :return: serialized version of this PublicKey.
+        """
+
+    @staticmethod
+    def deserialize(obj: Any, **_kwargs: Any) -> PublicKey:
+        r"""
+        Deserialization function for public keys, which will be passed to the communication module.
+
+        :param obj: serialized version of a PublicKey.
+        :param \**_kwargs: optional extra keyword arguments
+        :raise SerializationError: When communication library is not installed.
+        :return: Deserialized PublicKey from the given dict.
+        """
+
+
+class SecretKey(Protocol):
     """
     Secret Key of an AsymmetricEncryptionScheme.
 
     This should be subclassed for every AsymmetricEncryptionScheme.
     """
 
+    def serialize(self, **_kwargs: Any) -> Any:
+        r"""
+        Serialization function for secret keys, which will be passed to the communication module.
+
+        :param \**_kwargs: Optional extra keyword arguments.
+        :raise SerializationError: When communication library is not installed.
+        :return: serialized version of this SecretKey.
+        """
+
+    @staticmethod
+    def deserialize(obj: Any, **_kwargs: Any) -> SecretKey:
+        r"""
+        Deserialization function for public keys, which will be passed to the communication module.
+
+        :param obj: serialized version of a SecretKey.
+        :param \**_kwargs: optional extra keyword arguments
+        :raise SerializationError: When communication library is not installed.
+        :return: Deserialized SecretKey from the given dict.
+        """
+
 
 PK = TypeVar("PK", bound=PublicKey)
 SK = TypeVar("SK", bound=SecretKey)
-AE = TypeVar(
-    "AE", bound="AsymmetricEncryptionScheme[Any, Any, Any, Any, Any, Any, Any]"
-)
 
 
 class AsymmetricEncryptionScheme(
@@ -39,7 +88,7 @@ class AsymmetricEncryptionScheme(
     """
 
     @classmethod
-    def from_security_parameter(cls: Type[AE], *args: Any, **kwargs: Any) -> AE:
+    def from_security_parameter(cls, *args: Any, **kwargs: Any) -> Self:
         r"""
         Generate a new AsymmetricEncryptionScheme from a security parameter. Note that regular
         arguments will be passed to the generate_key_material  method, so all parameter that are
@@ -67,7 +116,7 @@ class AsymmetricEncryptionScheme(
             else:
                 raise ValueError(
                     f"The keyword arguments should either be used for key generation, "
-                    f"or passed to the constructor, but parameter with name {kwarg}"
+                    f"or passed to the constructor, but parameter with name {kwarg} "
                     f"is not present in either."
                 )
 
@@ -77,7 +126,7 @@ class AsymmetricEncryptionScheme(
         return cls(public_key, secret_key, **init_kwargs)
 
     @classmethod
-    def from_public_key(cls: Type[AE], public_key: PK, **kwargs: Any) -> AE:
+    def from_public_key(cls, public_key: PK, **kwargs: Any) -> Self:
         r"""
         Generate a new AsymmetricEncryptionScheme from a public key (e.g. when received from another
         party) and possibly additional parameters.
@@ -91,7 +140,7 @@ class AsymmetricEncryptionScheme(
     def __init__(
         self,
         public_key: PK,
-        secret_key: Optional[SK],
+        secret_key: SK | None,
         *_args: Any,
         **_kwargs: Any,
     ) -> None:
@@ -135,7 +184,7 @@ class AsymmetricEncryptionScheme(
         return self.__pk
 
     @property
-    def secret_key(self) -> Optional[SK]:
+    def secret_key(self) -> SK | None:
         """
         SecretKey of this instantiation of the scheme.
 
