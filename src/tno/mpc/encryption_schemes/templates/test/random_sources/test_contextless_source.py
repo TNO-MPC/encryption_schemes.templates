@@ -1,6 +1,7 @@
 """
 File containing all tests related to the ContextlessSource.
 """
+
 # pylint: disable=missing-function-docstring
 import pytest
 

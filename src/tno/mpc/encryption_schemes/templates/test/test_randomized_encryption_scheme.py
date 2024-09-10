@@ -1,6 +1,7 @@
 """
 File containing all tests regarding the RandomizedEncryptionScheme functionalities.
 """
+
 # pylint: disable=missing-function-docstring,protected-access
 
 from __future__ import annotations
@@ -18,10 +19,7 @@ from tno.mpc.encryption_schemes.templates.encryption_scheme import (
     EncodedPlaintext,
     EncryptionSchemeWarning,
 )
-from tno.mpc.encryption_schemes.templates.random_sources import (
-    ContextlessSource,
-    ProcessSource,
-)
+from tno.mpc.encryption_schemes.templates.random_sources import ContextlessSource
 from tno.mpc.encryption_schemes.templates.randomized_encryption_scheme import (
     WARN_INEFFICIENT_RANDOMIZATION,
     RandomizableCiphertext,

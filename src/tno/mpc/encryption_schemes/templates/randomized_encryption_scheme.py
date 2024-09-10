@@ -211,8 +211,7 @@ class RandomizedEncryptionScheme(
             this will default to the number of CPUs on the current device. This parameter is
             ignored if there already are randomness-generating processes.
         """
-        existing_process_source = self._get_existing_process_source()
-        if existing_process_source:
+        if existing_process_source := self._get_existing_process_source():
             existing_process_source.increase_requested(amount)
         else:
             process_source = ProcessSource(
@@ -304,8 +303,7 @@ class RandomizedEncryptionScheme(
         mismatch. This allows the user to tune the amount of pregenerated randomness and improve
         efficiency.
         """
-        process_source = self._get_existing_process_source()
-        if process_source is None:
+        if (process_source := self._get_existing_process_source()) is None:
             remaining_generation = 0
         else:
             remaining_generation = (

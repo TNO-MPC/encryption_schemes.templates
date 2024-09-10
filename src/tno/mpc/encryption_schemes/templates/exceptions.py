@@ -1,3 +1,8 @@
+"""
+Custom exceptions for the tno.mpc.encryption_scheme modules.
+"""
+
+
 class SerializationError(Exception):
     """
     Serialization error for encryption schemes.

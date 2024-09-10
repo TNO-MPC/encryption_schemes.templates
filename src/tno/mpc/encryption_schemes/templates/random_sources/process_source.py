@@ -1,12 +1,14 @@
 """
 Object that provides randomness from processes.
 """
+
 from __future__ import annotations
 
 import sys
 import time
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from itertools import chain
+from threading import Lock
 from types import TracebackType
 from typing import Any, Callable, Iterable, Iterator, List
 
@@ -79,6 +81,7 @@ class ProcessSource(RandomnessSource[RR]):
         # keep track of futures in python<3.9 to cancel them manually later
         self._futures: list[Future[RR]] = FakeList() if PYTHON_GE_39 else []
         self._randomness: Iterator[Future[RR]] = iter([])
+        self._lock = Lock()
 
         self._debug = debug
 
@@ -146,7 +149,9 @@ class ProcessSource(RandomnessSource[RR]):
             )
 
         try:
-            randomness = next(self._randomness).result()
+            # We use a lock because the following line is not thread-safe.
+            with self._lock:
+                randomness = next(self._randomness).result()
         except StopIteration:
             raise PauseIteration(  # pylint: disable=raise-missing-from
                 "Process source is depleted. More randomness can be required through "

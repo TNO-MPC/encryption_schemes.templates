@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "tno.mpc.encryption_schemes.templates"
 description = "Generic templates for different types of Encryption Schemes"
 readme = "README.md"
-authors = [{name = "TNO MPC Lab", email = "mpclab@tno.nl"}]
-maintainers = [{name = "TNO MPC Lab", email = "mpclab@tno.nl"}]
+authors = [{ name = "TNO PET Lab", email = "petlab@tno.nl" }]
+maintainers = [{ name = "TNO PET Lab", email = "petlab@tno.nl" }]
 keywords = [
     "TNO",
     "MPC",
@@ -15,7 +15,7 @@ keywords = [
     "encryption schemes",
     "templates",
 ]
-license = {text = "Apache License, Version 2.0"}
+license = { text = "Apache License, Version 2.0" }
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -26,9 +26,9 @@ classifiers = [
     "Typing :: Typed",
     "Topic :: Security :: Cryptography",
 ]
-urls = {Homepage = "https://mpc.tno.nl/", Documentation = "https://docs.mpc.tno.nl/encryption_schemes/templates/4.1.2", Source = "https://github.com/TNO-MPC/encryption_schemes.templates"}
+urls = { Homepage = "https://pet.tno.nl/", Documentation = "https://docs.pet.tno.nl/mpc/encryption_schemes/templates/4.1.5", Source = "https://github.com/TNO-Mpc/encryption_schemes.templates" }
 dynamic = ["entry-points", "version"]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 dependencies = [
     "tenacity",
     "typing_extensions~=4.0; python_version<'3.11'",
@@ -36,7 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tests = [
-    "pytest",
+    "pytest>=8.1",
     "pytest-timeout",
 ]
 
@@ -51,3 +51,50 @@ version = {attr = "tno.mpc.encryption_schemes.templates.__version__"}
 "*" = ["py.typed"]
 "tno.mpc.encryption_schemes.templates" = ["test/**.txt"]
 
+[tool.coverage.run]
+branch = true
+omit = ["*/test/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+
+[tool.isort]
+profile = "black"
+known_tno = "tno"
+known_first_party = "tno.mpc.encryption_schemes.templates"
+sections = "FUTURE,STDLIB,THIRDPARTY,TNO,FIRSTPARTY,LOCALFOLDER"
+no_lines_before = "LOCALFOLDER"
+
+[tool.mypy]
+mypy_path = "src,stubs"
+strict = true
+show_error_context = true
+namespace_packages = true
+explicit_package_bases = true
+
+[tool.tbump.version]
+current = "4.1.5"
+regex = '''
+\d+\.\d+\.\d+(-(.*))?
+'''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+    [[tool.tbump.file]]
+    src = "pyproject.toml"
+    search = "current = \"{current_version}\""
+
+    [[tool.tbump.file]]
+    src = "src/tno/mpc/encryption_schemes/templates/__init__.py"
+    search = "__version__ = \"{current_version}\""
+
+    [[tool.tbump.file]]
+    src = "CITATION.cff"
+    search = "version: {current_version}"
+
+    [[tool.tbump.file]]
+    src = "README.md"
+    search = '\[here\]\(https:\/\/docs.pet.tno.nl/[^\.]*\/{current_version}'

@@ -1,6 +1,7 @@
 """
 File containing all tests related to the ProcessSource.
 """
+
 # pylint: disable=missing-function-docstring
 import time
 

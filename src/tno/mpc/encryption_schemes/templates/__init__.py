@@ -1,5 +1,5 @@
 """
-Generic templates for different types of Encryption Schemes
+Root imports for the tno.mpc.encryption_schemes.templates package.
 """
 
 from tno.mpc.encryption_schemes.templates._randomness_manager import (
@@ -42,4 +42,4 @@ from tno.mpc.encryption_schemes.templates.symmetric_encryption_scheme import (
     SymmetricKey as SymmetricKey,
 )
 
-__version__ = "4.1.2"
+__version__ = "4.1.5"

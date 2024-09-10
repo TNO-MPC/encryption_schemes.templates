@@ -1,23 +1,20 @@
 """
 Generic classes used for creating an asymmetric encryption scheme.
 """
+
 from __future__ import annotations
 
 import inspect
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Tuple, TypeVar, cast
+from typing import Any, Generic, Protocol, Tuple, TypeVar, cast
 
 from .encryption_scheme import CT, CV, KM, PT, RP, EncryptionScheme
 
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol, Self
-elif sys.version_info < (3, 11):
-    from typing import Protocol
-
+if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
-    from typing import Protocol, Self
+    from typing import Self
 
 
 class PublicKey(Protocol):

@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,unsubscriptable-object
 """
 File containing all tests regarding the storing of encryption schemes and the generation of the
 id that is used for that purpose.
@@ -44,19 +44,6 @@ def test_pytest_plugin_resets_instances_test() -> None:
     """
     scheme = DummySchemeWithFuncRightVarName(dummy_value=1)
     assert not scheme._instances
-
-
-@pytest.mark.parametrize("identifier", list(range(10)))
-def test_id_generation_no_id_from_arguments(
-    identifier: int,
-) -> None:
-    """
-    Test to check if the right error is thrown when the id_from_arguments method is not present.
-
-    :param identifier: Identifier to be used for this scheme.
-    """
-    with pytest.raises(TypeError):
-        _ = DummySchemeNoFunc(dummy_value=identifier)  # type: ignore
 
 
 @pytest.mark.parametrize("identifier", list(range(10)))
@@ -176,6 +163,40 @@ def test_saving_globally(
     )
 
 
+def test_init_subclass() -> None:
+    """
+    Test that the class properties InstanceManagerMixin._instances and
+    InstanceManagerMixin._derived_classes work as expect.
+
+    When instantiating a new subclass of InstanceManagerMixin, its _instances
+    and _derived_classes should be empty and independent of the other
+    subclasses of InstanceManagerMixin.
+    """
+    # Check that the global _instances list are independent for each subclass
+    base_scheme_instance = DummySchemeWithFuncRightVarName(dummy_value=1)
+    base_scheme_instance.save_globally()
+    subclass_a_instance = SubclassA(dummy_value=2)
+    subclass_a_instance.save_globally()
+    subclass_b_instance = SubclassB(dummy_value=3)
+    subclass_b_instance.save_globally()
+    assert len(DummySchemeWithFuncRightVarName._instances) == 1
+    assert len(base_scheme_instance._instances) == 1
+    assert len(subclass_a_instance._instances) == 1
+    assert len(SubclassA._instances) == 1
+    assert len(subclass_b_instance._instances) == 1
+    assert len(SubclassB._instances) == 1
+
+    # Check that the derived classes are saved
+    assert SubclassA in base_scheme_instance._derived_classes
+    assert SubclassB in base_scheme_instance._derived_classes
+    assert len(base_scheme_instance._derived_classes) == 2
+    assert len(DummySchemeWithFuncRightVarName._derived_classes) == 2
+    assert len(subclass_a_instance._derived_classes) == 0
+    assert len(SubclassA._derived_classes) == 0
+    assert len(subclass_b_instance._derived_classes) == 0
+    assert len(SubclassB._derived_classes) == 0
+
+
 class _DummyScheme(EncryptionScheme[Any, Any, Any, Any, Any], ABC):
     """
     Dummy encryption scheme only used for subclassing by test classes that don't use any real
@@ -183,9 +204,7 @@ class _DummyScheme(EncryptionScheme[Any, Any, Any, Any, Any], ABC):
     """
 
     @classmethod
-    def from_security_parameter(
-        cls: type[_DummyScheme], security_parameter: int
-    ) -> _DummyScheme:
+    def from_security_parameter(cls, security_parameter: int) -> _DummyScheme:
         """
         Dummy
 
@@ -288,16 +307,6 @@ class _DummyScheme(EncryptionScheme[Any, Any, Any, Any, Any], ABC):
         """
 
 
-class DummySchemeNoFunc(_DummyScheme):
-    """
-    Dummy encryption scheme without id_from_arguments method.
-    """
-
-    def __init__(self, dummy_value: int) -> None:
-        super().__init__()
-        self.dummy_value = dummy_value
-
-
 class DummySchemeWithFuncWrongVarName(_DummyScheme):
     """
     Dummy encryption scheme with id_from_arguments method that has an argument name different
@@ -340,3 +349,11 @@ class DummySchemeWithFuncRightVarName(_DummyScheme):
         :return: Numeric id
         """
         return dummy_value
+
+
+class SubclassA(DummySchemeWithFuncRightVarName):
+    """Dummy subclass of DummySchemeWithFuncRightVarName."""
+
+
+class SubclassB(DummySchemeWithFuncRightVarName):
+    """A different dummy subclass of DummySchemeWithFuncRightVarName."""

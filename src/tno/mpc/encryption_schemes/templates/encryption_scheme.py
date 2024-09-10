@@ -1,21 +1,31 @@
 """
 Generic classes used for creating an encryption scheme.
 """
+
 from __future__ import annotations
 
-import inspect
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, Iterable, Iterator, TypeVar, cast
+from dataclasses import dataclass
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Protocol,
+    TypeVar,
+    cast,
+    runtime_checkable,
+)
 
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol, Self, runtime_checkable
-elif sys.version_info < (3, 11):
-    from typing import Protocol, runtime_checkable
+from tno.mpc.encryption_schemes.templates.util.instance_manager import (
+    InstanceManagerMixin,
+)
 
+if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
-    from typing import Protocol, Self, runtime_checkable
+    from typing import Self
 
 PT = TypeVar("PT")  # plaintext        - type of non-encoded plaintext
 RP = TypeVar("RP")  # raw plaintext    - type of EncodedPlaintext.value
@@ -43,40 +53,31 @@ class SupportsNeg(Protocol[T_co]):  # pylint: disable=too-few-public-methods
         pass
 
 
+@dataclass
 class EncodedPlaintext(Generic[RP]):  # pylint: disable=too-few-public-methods
     """
     Class that contains the encoding of a plaintext for a particular scheme.
+
+    Constructs an EncodedPlaintext with the given value and encoding as specified in the scheme.
+
+    :param value: value of the plaintext after encoding
+    :param scheme: encryption scheme that specifies the used encoding
+    :raise TypeError: provided scheme has the incorrect type.
     """
 
-    def __init__(self, value: RP, scheme: EncryptionScheme[KM, PT, RP, CV, CT]) -> None:
-        """
-        Constructs an EncodedPlaintext with the given value and encoding as specified in the scheme.
+    value: RP
+    scheme: EncryptionScheme[Any, Any, RP, Any, Any]
 
-        :param value: value of the plaintext after encoding
-        :param scheme: encryption scheme that specifies the used encoding
-        :raise TypeError: When scheme has the incorrect type.
+    def __post_init__(self) -> None:
         """
-        if not isinstance(scheme, EncryptionScheme):
+        Validate encryption scheme.
+
+        :raise TypeError: Scheme is of the wrong type.
+        """
+        if not isinstance(self.scheme, EncryptionScheme):
             raise TypeError(
-                f"Expected scheme to be an EncryptionScheme, not {type(scheme)}"
+                f"Expected scheme to be an EncryptionScheme, not {type(self.scheme)}"
             )
-
-        self.value = value
-        self.scheme = scheme
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Compare equality of two ciphertexts.
-
-        :param other: The other object to compare with.
-        :raise TypeError: When other object has the incorrect type.
-        :return: Boolean value representing (in)equality of self and other.
-        """
-        if not isinstance(other, EncodedPlaintext):
-            raise TypeError(
-                f"Expected comparison with an encoded plaintext, not {type(other)}"
-            )
-        return self.value == other.value and self.scheme == other.scheme
 
 
 CT = TypeVar("CT", bound="Ciphertext[Any, Any, Any, Any]")
@@ -133,16 +134,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.add(self, other)
 
-    def __radd__(self, other: Self | PT) -> Self:
-        """
-        Add other to the underlying plaintext of this ciphertext.
-
-        :param other: Plaintext value or other ciphertext. If Plaintext value we add the
-            plaintext value to the underlying ciphertext. If ciphertext we add the both underlying
-            ciphertexts.
-        :return: Addition of other to this ciphertext.
-        """
-        return self.scheme.add(self, other)
+    __radd__ = __add__
 
     def __sub__(self, other: Self | PT) -> Self:
         """
@@ -182,16 +174,7 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
         """
         return self.scheme.mul(self, other)
 
-    def __rmul__(self, other: Self | PT) -> Self:
-        """
-        Multiply other with the underlying plaintext of this ciphertext.
-
-        :param other: Plaintext value or other ciphertext. If Plaintext value we multiply the
-            plaintext value with the underlying ciphertext. If ciphertext we multiply the both
-            underlying ciphertexts.
-        :return: Multiplication of other with this ciphertext.
-        """
-        return self.scheme.mul(self, other)
+    __rmul__ = __mul__
 
     def __pow__(self, power: int) -> Self:
         """
@@ -212,7 +195,11 @@ class Ciphertext(Generic[KM, PT, RP, CV]):
 ES = TypeVar("ES", bound="EncryptionScheme[Any, Any, Any, Any, Any]")
 
 
-class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
+class EncryptionScheme(
+    InstanceManagerMixin,
+    ABC,
+    Generic[KM, PT, RP, CV, CT],
+):
     """
     Abstract base class to define generic EncryptionScheme functionality. Can be used for all kinds
     of encryption scheme (e.g. Asymmetric, Symmetric).
@@ -221,11 +208,6 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
 
     All abstract methods should be implemented by subclasses.
     """
-
-    _instances: ClassVar[dict[int, EncryptionScheme[Any, Any, Any, Any, Any]]] = {}
-    _derived_schemes: ClassVar[
-        list[type[EncryptionScheme[Any, Any, Any, Any, Any]]]
-    ] = []
 
     @classmethod
     @abstractmethod
@@ -248,145 +230,7 @@ class EncryptionScheme(ABC, Generic[KM, PT, RP, CV, CT]):
         :param \**_kwargs: Optional extra keyword arguments for the constructor of a concrete
             implementation.
         """
-        self.__identifier: int | None = None
-
-    def __init_subclass__(cls) -> None:
-        """
-        Constructor for subclasses.
-        """
-        cls._instances = {}
-        EncryptionScheme._derived_schemes.append(cls)
-        return super().__init_subclass__()
-
-    def save_globally(self, overwrite: bool = False) -> None:
-        """
-        Save this instance in a global list for accessibility using its identifier.
-
-        :param overwrite: overwrite an entry in the global list of the IDs coincide
-        :raises KeyError: If the ID already exists in the global list and overwrite is False
-        """
-        if (
-            self.identifier in type(self)._instances
-            and type(self)._instances[self.identifier] is not self
-            and not overwrite
-        ):
-            raise KeyError(
-                f"A different scheme with the same ID ({self.identifier}) is already saved "
-                f"globally. Use "
-                f"{type(self).__name__}.from_id or {type(self).__name__}.from_id_arguments  "
-                f"if you want to retrieve the "
-                f"existing scheme."
-            )
-        type(self)._instances[self.identifier] = self
-
-    def remove_from_global_list(self) -> None:
-        """
-        If this instance is saved in the global list, remove it.
-        """
-        if self.identifier in type(self)._instances:
-            type(self)._instances.pop(self.identifier)
-
-    @classmethod
-    def clear_instances(cls, all_types: bool = False) -> None:
-        """
-        Clear the list of globally saved instances of the current derived
-        EncryptionScheme class.
-
-        :param all_types: also clear instances of other derived EncryptionSchemes.
-        """
-        cls._instances.clear()
-        if all_types:
-            for scheme_type in EncryptionScheme._derived_schemes:
-                scheme_type._instances.clear()
-
-    @classmethod
-    def from_id(cls, identifier: int) -> Self:
-        """
-        Return the EncryptionScheme with this identifier that is stored in the global list.
-
-        :param identifier: Identifier of the encryption scheme.
-        :raise KeyError: If no scheme with this ID was found in the global list.
-        :return: EncryptionScheme belonging to this identifier.
-        """
-        if identifier in cls._instances:
-            return cast(Self, cls._instances[identifier])
-        raise KeyError(
-            "No scheme with this ID has been saved globally. If you want a scheme "
-            "to be accessible globally, you need to call save_globally."
-        )
-
-    # region Quasi-singleton logic
-
-    @classmethod
-    def from_id_arguments(cls, *args: Any, **kwargs: Any) -> Self:
-        r"""
-        Function that calls id_from_arguments to obtain an identifier for this scheme and
-        then retrieves a scheme from the global list of saved schemes using from_id.
-
-        :param \*args: regular arguments that would normally go into the constructor
-        :param \**kwargs: regular keyword arguments that would normally go into the constructor
-        :return: An EncryptionScheme with the same ID if one has been saved globally
-        """
-        identifier = cls.id_from_arguments(*args, **kwargs)
-        return cls.from_id(identifier=identifier)
-
-    @property
-    def identifier(self) -> int:
-        """
-        Property that returns an identifier for the scheme. It calls id_from_arguments and inspects
-        id_from_arguments to see which parameter names are required. It then searches for these
-        parameter names in the attributes and properties of self and uses their values as input
-        to the function. Note that this requires the parameter names to id_from_arguments to
-        have the same name as their respective attributes/properties in the scheme.
-
-        :raise KeyError: In cast there is a mismatch between the argument names in
-            id_from_arguments and the parameter names and properties of the class.
-        :raise TypeError: At least one argument name from id_from_arguments correponds with a
-            callable rather than an attribute or property.
-        :return: An identifier of type int
-        """
-        if self.__identifier is None:
-            argument_names = [
-                name
-                for name in inspect.getfullargspec(self.id_from_arguments)[0]
-                if name != "cls"
-            ]
-            kwargs = {}
-            members = dir(self)
-            for name in argument_names:
-                if name not in members:
-                    raise KeyError(
-                        f"The id_from_arguments function of class {type(self).__name__} has "
-                        f"parameter names as input that are not attributes of the class. The name "
-                        f"that triggered this error was {name}. There is a mismatch between "
-                        f"parameter names of "
-                        f"id_from_arguments and their respective attribute name of the class, so"
-                        f" make sure they are the same.\n"
-                    )
-                value = getattr(self, name)
-                if callable(value):
-                    raise TypeError(
-                        f"{type(self).__name__}.{name} should be an attribute or property,"
-                        f" but it is a callable."
-                    )
-                kwargs[name] = value
-            identifier = self.id_from_arguments(**kwargs)
-            self.__identifier = identifier
-        return self.__identifier
-
-    @classmethod
-    @abstractmethod
-    def id_from_arguments(cls, *args: Any, **kwargs: Any) -> int:
-        r"""
-        Method that turns the arguments for the constructor into an identifier. This identifier is
-        used to find constructor calls that would result in identical schemes.
-
-        :param \*args: regular arguments
-        :param \**kwargs: regular keyword arguments
-        :return: identifier of type int
-        """
-
-    # endregion
+        super().__init__()
 
     @staticmethod
     @abstractmethod

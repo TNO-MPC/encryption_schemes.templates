@@ -2,17 +2,13 @@
 This module defines the protocol of a RandomnessSource, which yields randomness for a
 RandomizedEncryptionScheme, and a RandomnessManager for orchestrating multiple such sources.
 """
+
 from __future__ import annotations
 
 import bisect
 import contextlib
 import sys
-from typing import Generic, TypeVar
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
+from typing import Generic, Protocol, TypeVar
 
 PYTHON_GE_310 = sys.version_info >= (3, 10)
 
@@ -39,6 +35,10 @@ class RandomnessSource(Protocol[RR_co]):
     def get_one(self) -> RR_co:
         """
         Give one random value.
+
+        Note: randomness sources may be queried by multiple threads at the same
+        time. When implementing a source, ensure that this method is
+        thread-safe.
 
         :raise PauseIteration: Source is depleted but remains active.
         :raise StopIteration: Source is depleted and can be closed.

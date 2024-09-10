@@ -1,6 +1,7 @@
 """
 Object that provides randomness from a file.
 """
+
 from __future__ import annotations
 
 import sys
@@ -45,8 +46,7 @@ class FileSource(RandomnessSource[RR]):
         debug: bool = ...,
         *,
         deserializer: Callable[[str], RR],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -58,8 +58,7 @@ class FileSource(RandomnessSource[RR]):
         retry_attempts: int = ...,
         retry_wait_s: float | None = ...,
         debug: bool = ...,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(
         self: FileSource[RR],

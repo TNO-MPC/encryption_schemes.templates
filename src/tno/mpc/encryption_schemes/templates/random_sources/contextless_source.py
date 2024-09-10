@@ -1,6 +1,7 @@
 """
 Object for providing randomness from a source that does not need to be opened or closed.
 """
+
 from typing import Iterable
 
 from tno.mpc.encryption_schemes.templates._randomness_manager import (

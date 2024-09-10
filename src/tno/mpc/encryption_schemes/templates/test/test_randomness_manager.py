@@ -1,6 +1,7 @@
 """
 File containing all tests related to the RandomnessManager.
 """
+
 # pylint: disable=missing-function-docstring
 from itertools import repeat
 from typing import Iterable
